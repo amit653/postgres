@@ -1,0 +1,130 @@
+//pg_wal dump contents and its LSN while creating a table
+
+postgres=# SELECT pg_current_wal_lsn();
+ pg_current_wal_lsn 
+--------------------
+ 18/B8000000
+(1 row)
+
+postgres=# CREATE TABLE abc(a VARCHAR(10));
+CREATE TABLE
+postgres=# SELECT pg_relation_filepath('abc');
+ pg_relation_filepath 
+----------------------
+ base/5/19769
+(1 row)
+
+postgres=# SELECT pg_current_wal_lsn();
+ pg_current_wal_lsn 
+--------------------
+ 18/B801A280                
+
+postgres=# SELECT pg_current_wal_lsn();
+ pg_current_wal_lsn 
+--------------------
+ 18/B801A368
+(1 row)
+
+postgres=# SELECT pg_current_wal_lsn();
+ pg_current_wal_lsn 
+--------------------
+ 18/B801A368
+(1 row)
+
+postgres=# SELECT pg_current_wal_lsn();
+ pg_current_wal_lsn 
+--------------------
+ 18/B801A368
+(1 row)
+
++++++++wal dump contents+++++++++
+ postgres$ pg_waldump --path=/Library/PostgreSQL/15/data/pg_wal --start=18/B8000000
+rmgr: XLOG        len (rec/tot):     30/    30, tx:          0, lsn: 18/B8000028, prev 18/B70000D8, desc: NEXTOID 27961
+rmgr: Storage     len (rec/tot):     42/    42, tx:          0, lsn: 18/B8000048, prev 18/B8000028, desc: CREATE base/5/19769   >>>>>>>>>>>>>> table created in WAL 0000000100000018000000B8
+rmgr: Heap        len (rec/tot):     54/  1958, tx:   92340793, lsn: 18/B8000078, prev 18/B8000048, desc: INSERT off 10 flags 0x01, blkref #0: rel 1663/5/1247 blk 14 FPW
+rmgr: Btree       len (rec/tot):     53/  5013, tx:   92340793, lsn: 18/B8000820, prev 18/B8000078, desc: INSERT_LEAF off 246, blkref #0: rel 1663/5/2703 blk 2 FPW
+rmgr: Btree       len (rec/tot):     53/  7045, tx:   92340793, lsn: 18/B8001BB8, prev 18/B8000820, desc: INSERT_LEAF off 76, blkref #0: rel 1663/5/2704 blk 4 FPW
+rmgr: Heap2       len (rec/tot):     57/  4581, tx:   92340793, lsn: 18/B8003758, prev 18/B8001BB8, desc: MULTI_INSERT 1 tuples flags 0x02, blkref #0: rel 1663/5/2608 blk 13 FPW
+rmgr: Btree       len (rec/tot):     53/  7593, tx:   92340793, lsn: 18/B8004958, prev 18/B8003758, desc: INSERT_LEAF off 155, blkref #0: rel 1663/5/2673 blk 4 FPW
+rmgr: Btree       len (rec/tot):     53/  6025, tx:   92340793, lsn: 18/B8006720, prev 18/B8004958, desc: INSERT_LEAF off 134, blkref #0: rel 1663/5/2674 blk 7 FPW
+rmgr: Heap        len (rec/tot):    211/   211, tx:   92340793, lsn: 18/B8007EB0, prev 18/B8006720, desc: INSERT off 11 flags 0x00, blkref #0: rel 1663/5/1247 blk 14
+rmgr: Btree       len (rec/tot):     64/    64, tx:   92340793, lsn: 18/B8007F88, prev 18/B8007EB0, desc: INSERT_LEAF off 246, blkref #0: rel 1663/5/2703 blk 2
+rmgr: Btree       len (rec/tot):     53/  8181, tx:   92340793, lsn: 18/B8007FC8, prev 18/B8007F88, desc: INSERT_LEAF off 7, blkref #0: rel 1663/5/2704 blk 1 FPW
+rmgr: Heap2       len (rec/tot):     85/    85, tx:   92340793, lsn: 18/B8009FD8, prev 18/B8007FC8, desc: MULTI_INSERT 1 tuples flags 0x02, blkref #0: rel 1663/5/2608 blk 13
+rmgr: Btree       len (rec/tot):     72/    72, tx:   92340793, lsn: 18/B800A048, prev 18/B8009FD8, desc: INSERT_LEAF off 155, blkref #0: rel 1663/5/2673 blk 4
+rmgr: Btree       len (rec/tot):     53/  5565, tx:   92340793, lsn: 18/B800A090, prev 18/B800A048, desc: INSERT_LEAF off 106, blkref #0: rel 1663/5/2674 blk 5 FPW
+rmgr: Heap        len (rec/tot):     54/   874, tx:   92340793, lsn: 18/B800B650, prev 18/B800A090, desc: INSERT off 2 flags 0x01, blkref #0: rel 1663/5/1259 blk 0 FPW
+rmgr: Btree       len (rec/tot):     53/  2393, tx:   92340793, lsn: 18/B800B9C0, prev 18/B800B650, desc: INSERT_LEAF off 115, blkref #0: rel 1663/5/2662 blk 2 FPW
+rmgr: Btree       len (rec/tot):     53/  5693, tx:   92340793, lsn: 18/B800C338, prev 18/B800B9C0, desc: INSERT_LEAF off 7, blkref #0: rel 1663/5/2663 blk 1 FPW
+rmgr: Btree       len (rec/tot):     53/  6437, tx:   92340793, lsn: 18/B800D978, prev 18/B800C338, desc: INSERT_LEAF off 275, blkref #0: rel 1663/5/3455 blk 1 FPW
+rmgr: Heap2       len (rec/tot):     57/  6493, tx:   92340793, lsn: 18/B800F2B8, prev 18/B800D978, desc: MULTI_INSERT 1 tuples flags 0x03, blkref #0: rel 1663/5/1249 blk 17 FPW
+rmgr: Btree       len (rec/tot):     53/  5889, tx:   92340793, lsn: 18/B8010C30, prev 18/B800F2B8, desc: INSERT_LEAF off 157, blkref #0: rel 1663/5/2658 blk 14 FPW
+rmgr: Btree       len (rec/tot):     53/  2353, tx:   92340793, lsn: 18/B8012350, prev 18/B8010C30, desc: INSERT_LEAF off 113, blkref #0: rel 1663/5/2659 blk 10 FPW
+rmgr: Heap2       len (rec/tot):    830/   830, tx:   92340793, lsn: 18/B8012C88, prev 18/B8012350, desc: MULTI_INSERT 6 tuples flags 0x02, blkref #0: rel 1663/5/1249 blk 17
+rmgr: Btree       len (rec/tot):     72/    72, tx:   92340793, lsn: 18/B8012FC8, prev 18/B8012C88, desc: INSERT_LEAF off 158, blkref #0: rel 1663/5/2658 blk 14
+rmgr: Btree       len (rec/tot):     64/    64, tx:   92340793, lsn: 18/B8013010, prev 18/B8012FC8, desc: INSERT_LEAF off 113, blkref #0: rel 1663/5/2659 blk 10
+rmgr: Btree       len (rec/tot):     72/    72, tx:   92340793, lsn: 18/B8013050, prev 18/B8013010, desc: INSERT_LEAF off 159, blkref #0: rel 1663/5/2658 blk 14
+rmgr: Btree       len (rec/tot):     64/    64, tx:   92340793, lsn: 18/B8013098, prev 18/B8013050, desc: INSERT_LEAF off 113, blkref #0: rel 1663/5/2659 blk 10
+rmgr: Btree       len (rec/tot):     72/    72, tx:   92340793, lsn: 18/B80130D8, prev 18/B8013098, desc: INSERT_LEAF off 158, blkref #0: rel 1663/5/2658 blk 14
+rmgr: Btree       len (rec/tot):     64/    64, tx:   92340793, lsn: 18/B8013120, prev 18/B80130D8, desc: INSERT_LEAF off 113, blkref #0: rel 1663/5/2659 blk 10
+rmgr: Btree       len (rec/tot):     72/    72, tx:   92340793, lsn: 18/B8013160, prev 18/B8013120, desc: INSERT_LEAF off 160, blkref #0: rel 1663/5/2658 blk 14
+rmgr: Btree       len (rec/tot):     64/    64, tx:   92340793, lsn: 18/B80131A8, prev 18/B8013160, desc: INSERT_LEAF off 113, blkref #0: rel 1663/5/2659 blk 10
+rmgr: Btree       len (rec/tot):     72/    72, tx:   92340793, lsn: 18/B80131E8, prev 18/B80131A8, desc: INSERT_LEAF off 158, blkref #0: rel 1663/5/2658 blk 14
+rmgr: Btree       len (rec/tot):     64/    64, tx:   92340793, lsn: 18/B8013230, prev 18/B80131E8, desc: INSERT_LEAF off 113, blkref #0: rel 1663/5/2659 blk 10
+rmgr: Btree       len (rec/tot):     72/    72, tx:   92340793, lsn: 18/B8013270, prev 18/B8013230, desc: INSERT_LEAF off 161, blkref #0: rel 1663/5/2658 blk 14
+rmgr: Btree       len (rec/tot):     64/    64, tx:   92340793, lsn: 18/B80132B8, prev 18/B8013270, desc: INSERT_LEAF off 113, blkref #0: rel 1663/5/2659 blk 10
+rmgr: Heap        len (rec/tot):     54/  7622, tx:   92340793, lsn: 18/B80132F8, prev 18/B80132B8, desc: INSERT off 2 flags 0x01, blkref #0: rel 1664/0/1214 blk 0 FPW
+rmgr: Btree       len (rec/tot):     53/  6917, tx:   92340793, lsn: 18/B80150D8, prev 18/B80132F8, desc: INSERT_LEAF off 2, blkref #0: rel 1664/0/1232 blk 1 FPW
+rmgr: Btree       len (rec/tot):     53/  6653, tx:   92340793, lsn: 18/B8016BF8, prev 18/B80150D8, desc: INSERT_LEAF off 2, blkref #0: rel 1664/0/1233 blk 1 FPW
+rmgr: Heap2       len (rec/tot):     85/    85, tx:   92340793, lsn: 18/B8018610, prev 18/B8016BF8, desc: MULTI_INSERT 1 tuples flags 0x02, blkref #0: rel 1663/5/2608 blk 13
+rmgr: Btree       len (rec/tot):     53/  6561, tx:   92340793, lsn: 18/B8018668, prev 18/B8018610, desc: INSERT_LEAF off 111, blkref #0: rel 1663/5/2673 blk 9 FPW
+rmgr: Btree       len (rec/tot):     72/    72, tx:   92340793, lsn: 18/B801A028, prev 18/B8018668, desc: INSERT_LEAF off 135, blkref #0: rel 1663/5/2674 blk 7
+rmgr: Standby     len (rec/tot):     42/    42, tx:   92340793, lsn: 18/B801A070, prev 18/B801A028, desc: LOCK xid 92340793 db 5 rel 19769 
+rmgr: Transaction len (rec/tot):    421/   421, tx:   92340793, lsn: 18/B801A0A0, prev 18/B801A070, desc: COMMIT 2023-09-17 13:34:26.553537 IST; inval msgs: catcache 80 catcache 79 catcache 80 catcache 79 catcache 55 catcache 54 catcache 7 catcache 6 catcache 7 catcache 6 catcache 7 catcache 6 catcache 7 catcache 6 catcache 7 catcache 6 catcache 7 catcache 6 catcache 7 catcache 6 snapshot 2608 relcache 19769 snapshot 1214
+rmgr: Standby     len (rec/tot):     50/    50, tx:          0, lsn: 18/B801A248, prev 18/B801A0A0, desc: RUNNING_XACTS nextXid 92340794 latestCompletedXid 92340793 oldestRunningXid 92340794
+rmgr: Standby     len (rec/tot):     50/    50, tx:          0, lsn: 18/B801A280, prev 18/B801A248, desc: RUNNING_XACTS nextXid 92340794 latestCompletedXid 92340793 oldestRunningXid 92340794
+rmgr: XLOG        len (rec/tot):    114/   114, tx:          0, lsn: 18/B801A2B8, prev 18/B801A280, desc: CHECKPOINT_ONLINE redo 18/B801A280; tli 1; prev tli 1; fpw true; xid 0:92340794; oid 27961; multi 11; offset 21; oldest xid 717 in DB 1; oldest multi 1 in DB 1; oldest/newest commit timestamp xid: 0/0; oldest running xid 92340794; online
+rmgr: Standby     len (rec/tot):     50/    50, tx:          0, lsn: 18/B801A330, prev 18/B801A2B8, desc: RUNNING_XACTS nextXid 92340794 latestCompletedXid 92340793 oldestRunningXid 92340794
+pg_waldump: error: error in WAL record at 18/B801A330: invalid record length at 18/B801A368: wanted 24, got 0   
+
+
+postgres=# select pg_walfile_name('18/B8000000'),pg_walfile_name('18/B8000028'),pg_walfile_name('18/B8000048'),pg_walfile_name('18/B8000078'),pg_walfile_name('18/B801A280'),pg_walfile_name('18/B801A368'),
+pg_walfile_name('18/B801A330');
+     pg_walfile_name      |     pg_walfile_name      |     pg_walfile_name      |     pg_walfile_name      |     pg_walfile_name      |     pg_walfile_name      |     pg_walfile_name      
+--------------------------+--------------------------+--------------------------+--------------------------+--------------------------+--------------------------+--------------------------
+ 0000000100000018000000B7 | 0000000100000018000000B8 | 0000000100000018000000B8 | 0000000100000018000000B8 | 0000000100000018000000B8 | 0000000100000018000000B8 | 0000000100000018000000B8
+(1 row)
+
+SELECT * FROM pg_ls_waldir() ORDER BY name;
+           name           |   size   |       modification        
+--------------------------+----------+---------------------------
+ 0000000100000018000000B8 | 16777216 | 2023-09-17 13:35:34+05:30
+ 0000000100000018000000B9 | 16777216 | 2023-09-17 05:00:16+05:30
+
+ 
+postgres=#  select name,setting from pg_settings where name like 'archive%';
+          name           |                      setting                       
+-------------------------+----------------------------------------------------
+ archive_cleanup_command | 
+ archive_command         | cp %p /Users/amitg/postgres/archive-5433/archive%f
+ archive_library         | 
+ archive_mode            | on
+ archive_timeout         | 36000
+
+ls -lrt /Library/PostgreSQL/15/data/pg_wal
+
+-rw-------@ 1 postgres  daemon  16777216 Sep 17 05:00 0000000100000018000000B9
+drwx------  2 postgres  daemon        64 Sep 17 13:35 archive_status
+-rw-------@ 1 postgres  wheel   16777216 Sep 17 13:35 0000000100000018000000B8
+
+ls -lrt archive-5433 
+
+-rw-------  1 postgres  daemon  16777216 Sep 16 16:31 archive0000000100000018000000B2
+-rw-------  1 postgres  daemon  16777216 Sep 16 16:31 archive0000000100000018000000B3
+-rw-------  1 postgres  daemon  16777216 Sep 16 16:53 archive0000000100000018000000B4
+-rw-------  1 postgres  daemon  16777216 Sep 16 16:53 archive0000000100000018000000B5
+-rw-------  1 postgres  daemon  16777216 Sep 16 16:53 archive0000000100000018000000B6
+-rw-------  1 postgres  daemon       344 Sep 16 16:53 archive0000000100000018000000B6.00000060.backup
+-rw-------  1 postgres  daemon  16777216 Sep 17 05:00 archive0000000100000018000000B7     
+
+
