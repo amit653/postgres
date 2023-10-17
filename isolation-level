@@ -180,3 +180,4 @@ amitg@localhost [Tue Oct 17 15:53:07 2023]> select * from test.people ;
 |  4 | Kim   | f      |
 +----+-------+--------+
 
+In case of insert from session1 in repeatable read, session 2 will see the changes i.e phantom reads
