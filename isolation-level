@@ -1,0 +1,182 @@
+A)
++++++++MariaDB-session1   read committed++++++++++
+
+amitg@localhost [Tue Oct 17 15:01:46 2023]> START TRANSACTION;
+Query OK, 0 rows affected (0.002 sec)
+
+amitg@localhost [Tue Oct 17 15:37:11 2023]> set session TRANSACTION ISOLATION LEVEL read committed;
+Query OK, 0 rows affected (0.004 sec)
+
+amitg@localhost [Tue Oct 17 15:37:13 2023]> select * from test.people ;
++----+-------+--------+
+| id | name  | gender |
++----+-------+--------+
+|  1 | Kathy | f      |
+|  2 | John  | m      |
+|  3 | a     | m      |
+|  4 | Kim   | f      |
++----+-------+--------+
+4 rows in set (0.002 sec)
+
+amitg@localhost [Tue Oct 17 15:37:20 2023]> update test.people set name='paul' where name='a';
+Query OK, 1 row affected (0.002 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+amitg@localhost [Tue Oct 17 15:37:53 2023]> commit;
+Query OK, 0 rows affected (0.005 sec)
+
+amitg@localhost [Tue Oct 17 15:38:02 2023]> select * from test.people ;
++----+-------+--------+
+| id | name  | gender |
++----+-------+--------+
+|  1 | Kathy | f      |
+|  2 | John  | m      |
+|  3 | paul  | m      |
+|  4 | Kim   | f      |
++----+-------+--------+
+4 rows in set (0.001 sec)
+
++++++++MariaDB-session2   read committed++++++++++
+
+
+amitg@localhost [Tue Oct 17 15:36:14 2023]> start transaction;
+Query OK, 0 rows affected (0.001 sec)
+
+amitg@localhost [Tue Oct 17 15:36:47 2023]> set session TRANSACTION ISOLATION LEVEL read committed;
+Query OK, 0 rows affected (0.001 sec)
+
+amitg@localhost [Tue Oct 17 15:37:01 2023]> select * from test.people ;
++----+-------+--------+
+| id | name  | gender |
++----+-------+--------+
+|  1 | Kathy | f      |
+|  2 | John  | m      |
+|  3 | a     | m      |
+|  4 | Kim   | f      |
++----+-------+--------+
+4 rows in set (0.008 sec)
+
+amitg@localhost [Tue Oct 17 15:37:24 2023]> select * from test.people ;
++----+-------+--------+
+| id | name  | gender |
++----+-------+--------+
+|  1 | Kathy | f      |
+|  2 | John  | m      |
+|  3 | a     | m      |
+|  4 | Kim   | f      |
++----+-------+--------+
+4 rows in set (0.001 sec)
+
+amitg@localhost [Tue Oct 17 15:37:56 2023]> select * from test.people ; -- 2nd run changed the o/p becuase of read committed isolation
++----+-------+--------+
+| id | name  | gender |
++----+-------+--------+
+|  1 | Kathy | f      |
+|  2 | John  | m      |
+|  3 | paul  | m      |
+|  4 | Kim   | f      |
++----+-------+--------+
+4 rows in set (0.000 sec)
+
+=============================
+
+B) MariaDB-session1   repeatable read ++++++++++
+amitg@localhost [Tue Oct 17 15:51:50 2023]> show variables like '%isolation%';
++-----------------------+-----------------+
+| Variable_name         | Value           |
++-----------------------+-----------------+
+| transaction_isolation | REPEATABLE-READ |
+| tx_isolation          | REPEATABLE-READ |
++-----------------------+-----------------+
+2 rows in set (0.002 sec)
+
+amitg@localhost [Tue Oct 17 15:51:51 2023]> select * from test.people ;
++----+-------+--------+
+| id | name  | gender |
++----+-------+--------+
+|  1 | Kathy | f      |
+|  2 | John  | m      |
+|  3 | paul  | m      |
+|  4 | Kim   | f      |
++----+-------+--------+
+4 rows in set (0.001 sec)
+
+amitg@localhost [Tue Oct 17 15:51:58 2023]> START TRANSACTION;
+Query OK, 0 rows affected (0.001 sec)
+
+amitg@localhost [Tue Oct 17 15:52:13 2023]> update test.people set name='Paul'  where name='paul';
+Query OK, 1 row affected (0.002 sec)
+Rows matched: 1  Changed: 1  Warnings: 0
+
+amitg@localhost [Tue Oct 17 15:52:58 2023]> commit;
+Query OK, 0 rows affected (0.002 sec)
+
+amitg@localhost [Tue Oct 17 15:53:12 2023]> select * from test.people ;
++----+-------+--------+
+| id | name  | gender |
++----+-------+--------+
+|  1 | Kathy | f      |
+|  2 | John  | m      |
+|  3 | Paul  | m      |>>>>>>>> changed
+|  4 | Kim   | f      |
++----+-------+--------+
+4 rows in set (0.002 sec)
+
+
++++++ session 2 repeatable read+++++
+
+show variables like '%isolation%';
++-----------------------+-----------------+
+| Variable_name         | Value           |
++-----------------------+-----------------+
+| transaction_isolation | REPEATABLE-READ |
+| tx_isolation          | REPEATABLE-READ |
++-----------------------+-----------------+
+2 rows in set (0.002 sec)
+
+amitg@localhost [Tue Oct 17 15:51:42 2023]> select * from test.people ;
++----+-------+--------+
+| id | name  | gender |
++----+-------+--------+
+|  1 | Kathy | f      |
+|  2 | John  | m      |
+|  3 | paul  | m      |
+|  4 | Kim   | f      |
++----+-------+--------+
+4 rows in set (0.001 sec)
+
+amitg@localhost [Tue Oct 17 15:52:01 2023]> START TRANSACTION;
+Query OK, 0 rows affected (0.001 sec)
+
+amitg@localhost [Tue Oct 17 15:52:15 2023]> select * from test.people ;
++----+-------+--------+
+| id | name  | gender |
++----+-------+--------+
+|  1 | Kathy | f      |
+|  2 | John  | m      |
+|  3 | paul  | m      |
+|  4 | Kim   | f      |
++----+-------+--------+
+4 rows in set (0.001 sec)
+
+amitg@localhost [Tue Oct 17 15:52:49 2023]> select * from test.people ;
++----+-------+--------+
+| id | name  | gender |
++----+-------+--------+
+|  1 | Kathy | f      |
+|  2 | John  | m      |
+|  3 | paul  | m      |
+|  4 | Kim   | f      |
++----+-------+--------+
+4 rows in set (0.002 sec)
+
+amitg@localhost [Tue Oct 17 15:53:07 2023]> select * from test.people ;
++----+-------+--------+
+| id | name  | gender |
++----+-------+--------+
+|  1 | Kathy | f      |
+|  2 | John  | m      |
+|  3 | paul  | m      |  ++ session 2 will repeatedly see the same value under his transaction block, this is repeatable reads
+|  4 | Kim   | f      |
++----+-------+--------+
+
