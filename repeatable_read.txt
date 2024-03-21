@@ -1,0 +1,69 @@
+
+-- Getting consistent image of transaction using ISOLATION LEVEL REPEATABLE READ
+\set PROMPT1 '(%n@%M:%>) %`date +%H:%M:%S:%S` [%/] \n%x%# '
+trans 1
+(postgres@[local]:5433) 18:37:32:32 [postgres] # begin transaction;
+BEGIN
+(postgres@[local]:5433) 18:37:40:40 [postgres] *# set  TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+SET
+(postgres@[local]:5433) 18:37:59:59 [postgres] *# select * from test ;
+ id |  name   
+----+---------
+  1 | aditya
+  2 | abhijay
+(2 rows)
+
+(postgres@[local]:5433) 18:38:05:05 [postgres] *# update test set name='abhi' where id=1;
+UPDATE 1
+(postgres@[local]:5433) 18:38:46:46 [postgres] *# select * from test ;
+ id |  name   
+----+---------
+  2 | abhijay
+  1 | abhi
+(2 rows)
+
+(postgres@[local]:5433) 18:38:49:49 [postgres] *# commit;
+COMMIT
+(postgres@[local]:5433) 18:39:23:23 [postgres] # select * from test ;
+ id |  name   
+----+---------
+  2 | abhijay
+  1 | abhi
+(2 rows)
+
+(postgres@[local]:5433) 18:39:28:28 [postgres] # end;
+WARNING:  there is no transaction in progress
+COMMIT
+
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+Trans 2
+
+(postgres@[local]:5433) 18:37:16:16 [postgres] # begin transaction;
+BEGIN
+(postgres@[local]:5433) 18:37:47:47 [postgres] *# set  TRANSACTION ISOLATION LEVEL REPEATABLE READ;
+SET
+(postgres@[local]:5433) 18:38:10:10 [postgres] *# select * from test;
+ id |  name   
+----+---------
+  1 | aditya
+  2 | abhijay
+(2 rows)
+
+(postgres@[local]:5433) 18:38:17:17 [postgres] *# select * from test ;
+ id |  name   
+----+---------
+  1 | aditya
+  2 | abhijay
+(2 rows)
+
+(postgres@[local]:5433) 18:38:59:59 [postgres] *# select * from test ;
+ id |  name   
+----+---------
+  1 | aditya
+  2 | abhijay
+(2 rows)
+
+(postgres@[local]:5433) 18:39:50:50 [postgres] *# update test set name='adi' where id=1;   >>>>>>>>>>>>>>>>> Here consistent snapshot of test is not valid , because trans1 modified it earlier, hence this transaction will fail
+ERROR:  could not serialize access due to concurrent update
+(postgres@[local]:5433) 18:40:49:49 [postgres] !# end;
+ROLLBACK
