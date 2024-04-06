@@ -1,0 +1,35 @@
+//create objects in user specific schema instead of default public schema
+postgres=# \c
+You are now connected to database "postgres" as user "postgres".
+postgres=# select usename from pg_user;
+ usename  
+----------
+ postgres
+ amitg
+(2 rows)
+
+postgres=# create schema test_usr authorization test_usr;
+ERROR:  role "test_usr" does not exist
+postgres=# create user test_usr;
+CREATE ROLE
+postgres=# create schema test_usr authorization test_usr;
+CREATE SCHEMA
+postgres=# select usename from pg_user;
+ usename  
+----------
+ postgres
+ amitg
+ test_usr
+(3 rows)
+psql -U test_usr
+psql (15.3)
+
+postgres=> create table test (id text);
+CREATE TABLE
+postgres=> \d
+                      List of relations
+  Schema  |       Name        |       Type        |  Owner   
+----------+-------------------+-------------------+----------
+ public   | abc               | table             | amitg
+ public   | v                 | view              | postgres
+ test_usr | test              | table             | test_usr >>> now default is test_usr
