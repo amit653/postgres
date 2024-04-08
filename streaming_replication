@@ -202,3 +202,14 @@ Date/time type storage:               64-bit integers
 Float8 argument passing:              by value
 Data page checksum version:           0
 Mock authentication nonce:            87f13fbf27714f61fac2759af8515121957727e74ee2d6ea55239019ebeccc86
+>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+-- Verify lag status in slave
+SELECT
+  pg_is_in_recovery() AS is_slave,
+  pg_last_wal_receive_lsn() AS receive,
+  pg_last_wal_replay_lsn() AS replay,
+  pg_last_wal_receive_lsn() = pg_last_wal_replay_lsn() AS synced,
+  EXTRACT(SECONDS FROM now() - pg_last_xact_replay_timestamp())::float AS lag;
+ is_slave |  receive   |   replay   | synced |   lag    
+----------+------------+------------+--------+----------
+ t        | 0/15016978 | 0/15016978 | t      | 8.363316 >>> behind by 8 secs ,receive and replay LSN are same , no lag present
