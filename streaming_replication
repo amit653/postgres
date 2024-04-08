@@ -1,0 +1,204 @@
+
+Configure streaming replication in default async mode which is similar to oracle Data guard Perf mode.
+-- Tested it on same machine where primary is main and standby as replica.
+
+pg_lsclusters >>> currently both are running separately as standalone
+Ver Cluster Port Status Owner    Data directory                 Log file
+15  main    5432 online postgres /var/lib/postgresql/15/main    /var/log/postgresql/postgresql-15-main.log
+15  replica 5433 online postgres /var/lib/postgresql/15/replica /var/log/postgresql/postgresql-15-replica.log  >>>>>> Converting this standalone to replica
+
+pg_basebackup --pgdata=/home/amit/basebackup -R  >>>>  will connect to default port 5432
+$ ls /home/amit/basebackup 
+PG_VERSION    backup_manifest  global        pg_dynshmem  pg_multixact  pg_replslot  pg_snapshots  pg_stat_tmp  pg_tblspc    pg_wal   postgresql.auto.conf
+backup_label  base             pg_commit_ts  pg_logical   pg_notify     pg_serial    pg_stat       pg_subtrans  pg_twophase  pg_xact  standby.signal
+
+-- stop replica
+sudo pg_ctlcluster 15 replica status
+pg_ctl: no server running
+
+sudo rm -rf /var/lib/postgresql/15/replica
+sudo mv /home/amit/basebackup/ /var/lib/postgresql/15/replica
+sudo chown -R postgres:postgres /var/lib/postgresql/15/replica
+--- [13179] DETAIL:  Permissions should be u=rwx (0700) or u=rwx,g=rx (0750).
+sudo chmod 700 -R  /var/lib/postgresql/15/replica   >>> this additional step also needed otherwise permission error  while starting replica.
+
+
+-- this will connect to primary host and port
+ls /var/lib/postgresql/15/replica/postgresql.auto.conf 
+primary_conninfo = 'user=amit passfile=''/home/amit/.pgpass'' channel_binding=prefer host=''/var/run/postgresql'' port=5432 sslmode=prefer sslcompression=0 sslsni=1 ssl_min_protocol_version=TLSv1.2 gssencmode=prefer krbsrvname=postgres target_session_attrs=any'
+
+-- also created an empty standby.signal file that will tell the server to start in continuous recovery mode.
+$ sudo ls -l /var/lib/postgresql/15/replica/standby.signal
+
+-- start replica
+systemctl start postgresql@15-replica
+
+-- check the process on primary and replica
+
+ sudo head -n 1 /var/lib/postgresql/15/replica/postmaster.pid >>>>> standby
+13321
+amit:~$  sudo ps -o pid,command --ppid 13321
+    PID COMMAND
+  13322 postgres: 15/replica: checkpointer 
+  13323 postgres: 15/replica: background writer 
+  13324 postgres: 15/replica: startup recovering 000000010000000000000015
+  13325 postgres: 15/replica: walreceiver streaming 0/15000148
+amit:~$ sudo head -n 1 /var/lib/postgresql/15/main/postmaster.pid       >>>> primary
+9647
+amit:~$ sudo ps -o pid,command --ppid  9647
+    PID COMMAND
+   9648 postgres: 15/main: checkpointer 
+   9649 postgres: 15/main: background writer 
+   9651 postgres: 15/main: walwriter 
+   9652 postgres: 15/main: logical replication launcher 
+  13326 postgres: 15/main: walsender amit [local] streaming 0/15000148
+  13345 postgres: 15/main: postgres postgres [local] idle
+
+--- verify replication status on primary
+psql -p 5432
+postgres=# SELECT * FROM pg_stat_replication \gx
+-[ RECORD 1 ]----+------------------------------
+pid              | 13326
+usesysid         | 16388
+usename          | amit
+application_name | 15/replica
+client_addr      | 
+client_hostname  | 
+client_port      | -1
+backend_start    | 2024-04-08 13:58:14.948849+00
+backend_xmin     | 
+state            | streaming
+sent_lsn         | 0/15000148
+write_lsn        | 0/15000148
+flush_lsn        | 0/15000148
+replay_lsn       | 0/15000148
+write_lag        | 
+flush_lag        | 
+replay_lag       | 
+sync_priority    | 0
+sync_state       | async
+reply_time       | 2024-04-08 13:59:45.102843+00
+
+---
+
+ps -C postgres -o cmd
+CMD
+/usr/lib/postgresql/15/bin/postgres -D /var/lib/postgresql/15/main -c config_file=/etc/postgresql/15/main/postgresql.conf
+postgres: 15/main: checkpointer 
+postgres: 15/main: background writer 
+postgres: 15/main: walwriter 
+postgres: 15/main: logical replication launcher 
+/usr/lib/postgresql/15/bin/postgres -D /var/lib/postgresql/15/replica -c config_file=/etc/postgresql/15/replica/postgresql.conf
+postgres: 15/replica: checkpointer 
+postgres: 15/replica: background writer 
+postgres: 15/replica: startup recovering 000000010000000000000015
+postgres: 15/replica: walreceiver streaming 0/15000148
+postgres: 15/main: walsender amit [local] streaming 0/15000148
+
+-- SCN information in pg_controldata
+locate pg_controldata
+$ sudo /usr/lib/postgresql/15/bin/pg_controldata -D /var/lib/postgresql/15/main
+pg_control version number:            1300
+Catalog version number:               202209061
+Database system identifier:           7254886382374353934
+Database cluster state:               in production        >>>>>>>>>> primary
+pg_control last modified:             Mon Apr  8 13:16:11 2024
+Latest checkpoint location:           0/15000098
+Latest checkpoint's REDO location:    0/15000060
+Latest checkpoint's REDO WAL file:    000000010000000000000015
+Latest checkpoint's TimeLineID:       1
+Latest checkpoint's PrevTimeLineID:   1
+Latest checkpoint's full_page_writes: on
+Latest checkpoint's NextXID:          0:14251
+Latest checkpoint's NextOID:          24664
+Latest checkpoint's NextMultiXactId:  1
+Latest checkpoint's NextMultiOffset:  0
+Latest checkpoint's oldestXID:        716
+Latest checkpoint's oldestXID's DB:   1
+Latest checkpoint's oldestActiveXID:  14251
+Latest checkpoint's oldestMultiXid:   1
+Latest checkpoint's oldestMulti's DB: 1
+Latest checkpoint's oldestCommitTsXid:0
+Latest checkpoint's newestCommitTsXid:0
+Time of latest checkpoint:            Mon Apr  8 13:16:11 2024
+Fake LSN counter for unlogged rels:   0/3E8
+Minimum recovery ending location:     0/0
+Min recovery ending loc's timeline:   0
+Backup start location:                0/0
+Backup end location:                  0/0
+End-of-backup record required:        no
+wal_level setting:                    replica
+wal_log_hints setting:                off
+max_connections setting:              100
+max_worker_processes setting:         8
+max_wal_senders setting:              10
+max_prepared_xacts setting:           0
+max_locks_per_xact setting:           64
+track_commit_timestamp setting:       off
+Maximum data alignment:               8
+Database block size:                  8192
+Blocks per segment of large relation: 131072
+WAL block size:                       8192
+Bytes per WAL segment:                16777216
+Maximum length of identifiers:        64
+Maximum columns in an index:          32
+Maximum size of a TOAST chunk:        1996
+Size of a large-object chunk:         2048
+Date/time type storage:               64-bit integers
+Float8 argument passing:              by value
+Data page checksum version:           0
+Mock authentication nonce:            87f13fbf27714f61fac2759af8515121957727e74ee2d6ea55239019ebeccc86
+
+
+>>>>> replica
+sudo /usr/lib/postgresql/15/bin/pg_controldata -D /var/lib/postgresql/15/replica
+pg_control version number:            1300
+Catalog version number:               202209061
+Database system identifier:           7254886382374353934
+Database cluster state:               in archive recovery >>>>>>>>>>>>>>>>>>>
+pg_control last modified:             Mon Apr  8 14:08:14 2024
+Latest checkpoint location:           0/15000098
+Latest checkpoint's REDO location:    0/15000060
+Latest checkpoint's REDO WAL file:    000000010000000000000015
+Latest checkpoint's TimeLineID:       1
+Latest checkpoint's PrevTimeLineID:   1
+Latest checkpoint's full_page_writes: on
+Latest checkpoint's NextXID:          0:14251
+Latest checkpoint's NextOID:          24664
+Latest checkpoint's NextMultiXactId:  1
+Latest checkpoint's NextMultiOffset:  0
+Latest checkpoint's oldestXID:        716
+Latest checkpoint's oldestXID's DB:   1
+Latest checkpoint's oldestActiveXID:  14251
+Latest checkpoint's oldestMultiXid:   1
+Latest checkpoint's oldestMulti's DB: 1
+Latest checkpoint's oldestCommitTsXid:0
+Latest checkpoint's newestCommitTsXid:0
+Time of latest checkpoint:            Mon Apr  8 13:16:11 2024
+Fake LSN counter for unlogged rels:   0/3E8
+Minimum recovery ending location:     0/15000148 >>>>>>>>>>>>>>>>>>>>>>>
+Min recovery ending loc's timeline:   1
+Backup start location:                0/0
+Backup end location:                  0/0
+End-of-backup record required:        no
+wal_level setting:                    replica
+wal_log_hints setting:                off
+max_connections setting:              100
+max_worker_processes setting:         8
+max_wal_senders setting:              10
+max_prepared_xacts setting:           0
+max_locks_per_xact setting:           64
+track_commit_timestamp setting:       off
+Maximum data alignment:               8
+Database block size:                  8192
+Blocks per segment of large relation: 131072
+WAL block size:                       8192
+Bytes per WAL segment:                16777216
+Maximum length of identifiers:        64
+Maximum columns in an index:          32
+Maximum size of a TOAST chunk:        1996
+Size of a large-object chunk:         2048
+Date/time type storage:               64-bit integers
+Float8 argument passing:              by value
+Data page checksum version:           0
+Mock authentication nonce:            87f13fbf27714f61fac2759af8515121957727e74ee2d6ea55239019ebeccc86
