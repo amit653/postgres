@@ -1,0 +1,238 @@
+--configure replication SYNC mode replica_sync standby db at port 5435
+-- current configuration A(main) -> B(replica) in async mode
+-- Target configuration A(main) -> B(replica)  and   A(main) -> C(replica_sync) in SYNC mode
+
+
+Solution: Implemented on standlalone server
+--backup from primary running at port 5432
+pg_basebackup --pgdata=/home/amit/basebackup
+--define sync standby application name and bounce the primary
+psql -p 5432
+psql (15.3 (Ubuntu 15.3-1.pgdg22.04+1))
+Type "help" for help.
+
+amit=# ALTER SYSTEM SET synchronous_standby_names = 'replica_sync';
+
+ /usr/lib/postgresql/15/bin/initdb -D /var/lib/postgresql/15/replica_sync
+The files belonging to this database system will be owned by user "postgres".
+This user must also own the server process.
+
+The database cluster will be initialized with locale "C.UTF-8".
+The default database encoding has accordingly been set to "UTF8".
+The default text search configuration will be set to "english".
+
+Data page checksums are disabled.
+
+fixing permissions on existing directory /var/lib/postgresql/15/replica_sync ... ok
+creating subdirectories ... ok
+selecting dynamic shared memory implementation ... posix
+selecting default max_connections ... 100
+selecting default shared_buffers ... 128MB
+selecting default time zone ... Etc/UTC
+creating configuration files ... ok
+running bootstrap script ... ok
+performing post-bootstrap initialization ... ok
+syncing data to disk ... ok
+
+initdb: warning: enabling "trust" authentication for local connections
+initdb: hint: You can change this by editing pg_hba.conf or using the option -A, or --auth-local and --auth-host, the next time you run initdb.
+
+Success. You can now start the database server using:
+
+    /usr/lib/postgresql/15/bin/pg_ctl -D /var/lib/postgresql/15/replica_sync -l logfile start
+
+-- move the backup to replica_sync location 
+  sudo mv /home/amit/basebackup/* /var/lib/postgresql/15/replica_sync/
+---  change the port to 5435
+vi /var/lib/postgresql/15/replica_sync/postgresql.conf 
+cp /var/lib/postgresql/15/replica/postgresql.auto.conf   to /var/lib/postgresql/15/replica_sync/postgresql.auto.conf  
+
+ /usr/lib/postgresql/15/bin/pg_ctl -D /var/lib/postgresql/15/replica_sync status
+pg_ctl: no server running
+
+sudo chown -R postgres:postgres /var/lib/postgresql/15/replica_sync
+sudo chmod 700 -R  /var/lib/postgresql/15/replica_sync 
+
+--- Add primary conenction string
+cat /var/lib/postgresql/15/replica_sync/postgresql.auto.conf 
+primary_conninfo = 'user=amit port=5432 application_name=replica_sync'
+
+--  touch /var/lib/postgresql/15/replica_sync/standby.signal   --- for standby recovery
+-- cp  /etc/postgresql/15/replica/pg_hba.conf  to  /etc/postgresql/15/replica_sync/pg_hba.conf 
+
+--  define its log  and start sync standby 
+/usr/lib/postgresql/15/bin/pg_ctl -D /var/lib/postgresql/15/replica_sync -l logfile start >>>>>>>> view ~/15/replica_sync/logfile
+ /usr/lib/postgresql/15/bin/pg_ctl -D /var/lib/postgresql/15/replica_sync start
+
+ --- Verify  Primary(main) and its 2 replicas(replica and replica_sync) one is async and other is sync
+
+ >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>> Monitor the status >>>>>>>>>>>>>>>> 
+
+ A) Primary (main)
+ amit:~$ sudo head -n 1 /var/lib/postgresql/15/replica/postmaster.pid 
+13321
+amit:~$ sudo head -n 1 /var/lib/postgresql/15/main/postmaster.pid 
+14261
+amit:~$ sudo head -n 1 /var/lib/postgresql/15/replica_sync/postmaster.pid 
+14323
+amit:~$ sudo ps -o pid,command --ppid 14261 >>>>>>>>>> Primary 
+    PID COMMAND
+  14262 postgres: 15/main: checkpointer 
+  14263 postgres: 15/main: background writer 
+  14265 postgres: 15/main: walwriter 
+  14266 postgres: 15/main: logical replication launcher 
+  16149 postgres: 15/main: walsender amit [local] streaming 0/1F000468 >>>>>>>>>>>>>>>>>>> for async
+  16150 postgres: 15/main: walsender amit [local] streaming 0/1F000468 >>>>>>>>>>>>>>>>>>>>>>>> for sync
+amit:~$ sudo ps -o pid,command --ppid 13321      >>>>>>>> async standby
+    PID COMMAND
+  13322 postgres: 15/replica: checkpointer 
+  13323 postgres: 15/replica: background writer 
+  13324 postgres: 15/replica: startup recovering 00000001000000000000001F
+  16148 postgres: 15/replica: walreceiver  >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+amit:~$ sudo ps -o pid,command --ppid 14323 >>>>>>>>>>>   sync standby
+    PID COMMAND
+  14324 postgres: checkpointer 
+  14325 postgres: background writer 
+  14326 postgres: startup recovering 00000001000000000000001F
+  16147 postgres: walreceiver  >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>
+  16177 postgres: postgres postgres [local] idle
+amit:~$ psql -p 5432
+psql (15.3 (Ubuntu 15.3-1.pgdg22.04+1))
+Type "help" for help.
+
+amit=# SELECT * FROM pg_stat_replication \gx
+-[ RECORD 1 ]----+------------------------------
+pid              | 16149    >>>>>>>>>>> walsender PID  for replica 
+usesysid         | 16388
+usename          | amit
+application_name | 15/replica
+client_addr      | 
+client_hostname  | 
+client_port      | -1
+backend_start    | 2024-04-10 05:39:07.200025+00
+backend_xmin     | 
+state            | streaming
+sent_lsn         | 0/1F000468
+write_lsn        | 0/1F000468
+flush_lsn        | 0/1F000468
+replay_lsn       | 0/1F000468
+write_lag        | 
+flush_lag        | 
+replay_lag       | 
+sync_priority    | 0
+sync_state       | async
+reply_time       | 2024-04-10 05:56:39.36236+00
+-[ RECORD 2 ]----+------------------------------
+pid              | 16150   >>>>>>>>>>>>>  >>>>>>>>>>> walsender PID  for replica_sync 
+usesysid         | 16388
+usename          | amit
+application_name | replica_sync
+client_addr      | 
+client_hostname  | 
+client_port      | -1
+backend_start    | 2024-04-10 05:39:07.200749+00
+backend_xmin     | 
+state            | streaming
+sent_lsn         | 0/1F000468
+write_lsn        | 0/1F000468
+flush_lsn        | 0/1F000468
+replay_lsn       | 0/1F000468
+write_lag        | 
+flush_lag        | 
+replay_lag       | 
+sync_priority    | 1
+sync_state       | sync
+reply_time       | 2024-04-10 05:56:38.858632+00
+
+amit=# show data_directory; show port;
+       data_directory        
+-----------------------------
+ /var/lib/postgresql/15/main
+ port 
+------
+ 5432
+(1 row)
+
+B) >>>>>>>>>>> sync standby replica status>>>>>>>>>>>>>>>>>>>>>>>>>>
+show data_directory;show port;
+           data_directory            
+-------------------------------------
+ /var/lib/postgresql/15/replica_sync
+ port 
+------
+ 5435
+(1 row)
+
+postgres=# show hot_standby ;  -- default readonly on
+ hot_standby 
+-------------
+ on
+
+ postgres=# SELECT                      
+  pg_is_in_recovery() AS is_slave,pg_is_wal_replay_paused() as paused,
+  pg_last_wal_receive_lsn() AS receive,
+  pg_last_wal_replay_lsn() AS replay,
+  pg_last_wal_receive_lsn() = pg_last_wal_replay_lsn() AS synced,
+  EXTRACT(SECONDS FROM now() - pg_last_xact_replay_timestamp())::float AS lag;
+ is_slave | paused |  receive   |   replay   | synced |    lag    
+----------+--------+------------+------------+--------+-----------
+ t        | f      | 0/1F000468 | 0/1F000468 | t      | 11.254413
+(1 row)
+
+
+postgres=# select * from pg_stat_wal_receiver\gx
+-[ RECORD 1 ]---------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+pid                   | 16147  >>>>>>> sync receiver pid
+status                | streaming
+receive_start_lsn     | 0/1F000000
+receive_start_tli     | 1
+written_lsn           | 0/1F000468
+flushed_lsn           | 0/1F000468
+received_tli          | 1
+last_msg_send_time    | 2024-04-10 06:53:14.090273+00
+last_msg_receipt_time | 2024-04-10 06:53:14.090416+00
+latest_end_lsn        | 0/1F000468
+latest_end_time       | 2024-04-10 05:39:07.195539+00
+slot_name             | 
+sender_host           | /var/run/postgresql
+sender_port           | 5432
+conninfo              | user=amit passfile=/var/lib/postgresql/.pgpass channel_binding=prefer dbname=replication port=5432 application_name=replica_sync fallback_application_name=walreceiver sslmode=prefer sslcompression=0 sslsni=1 ssl_min_protocol_version=TLSv1.2 gssencmode=prefer krbsrvname=postgres target_session_attrs=any
+
+
+C)  Async standby 
+show data_directory;show port;
+         data_directory         
+--------------------------------
+ /var/lib/postgresql/15/replica
+ port 
+------
+ 5433
+
+SELECT                      
+  pg_is_in_recovery() AS is_slave,pg_is_wal_replay_paused() as paused,
+  pg_last_wal_receive_lsn() AS receive,
+  pg_last_wal_replay_lsn() AS replay,
+  pg_last_wal_receive_lsn() = pg_last_wal_replay_lsn() AS synced,
+  EXTRACT(SECONDS FROM now() - pg_last_xact_replay_timestamp())::float AS lag;
+ is_slave | paused |  receive   |   replay   | synced |    lag    
+----------+--------+------------+------------+--------+-----------
+ t        | f      | 0/1F000468 | 0/1F000468 | t      | 38.115408
+(1 row)
+
+postgres=# select * from pg_stat_wal_receiver\gx
+-[ RECORD 1 ]---------+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+pid                   | 16148  >> async pid
+status                | streaming
+receive_start_lsn     | 0/1F000000
+receive_start_tli     | 1
+written_lsn           | 0/1F000468
+flushed_lsn           | 0/1F000468
+received_tli          | 1
+last_msg_send_time    | 2024-04-10 06:55:15.067101+00
+last_msg_receipt_time | 2024-04-10 06:55:15.06721+00
+latest_end_lsn        | 0/1F000468
+latest_end_time       | 2024-04-10 05:39:07.195469+00
+slot_name             | 
+sender_host           | /var/run/postgresql
+sender_port           | 5432
+conninfo              | user=amit passfile=/home/amit/.pgpass channel_binding=prefer dbname=replication host=/var/run/postgresql port=5432 fallback_application_name=15/replica sslmode=prefer sslcompression=0 sslsni=1 ssl_min_protocol_version=TLSv1.2 gssencmode=prefer krbsrvname=postgres target_session_attrs=any
