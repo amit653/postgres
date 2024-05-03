@@ -152,8 +152,18 @@ ssh     15900 amitg    6u  IPv4 0x4f2f47558bd79e79      0t0  TCP localhost:commp
 ssh     15900 amitg   10u  IPv6 0x4f2f47558047ec29      0t0  TCP localhost:commplex-link->localhost:58562 (FIN_WAIT_2)
 psql    15908 amitg    5u  IPv6 0x4f2f47558a509c29      0t0  TCP localhost:58562->localhost:commplex-link (CLOSE_WAIT)
 
+>>>>>>>>>>> ssh passwordless>>>>>>>>>>>>>>>>>>>>
+copy local ~/.ssh/id_rsa.pub  to remote user  student and root  student:~$ vi ~/.ssh/authorized_keys 
+verify their checksum
+amitg@MacBook-Pro  % openssl md5  ~/.ssh/id_rsa.pub
+MD5(/Users/amitg/.ssh/id_rsa.pub)= 3d819f9c7b3538fe62c8ca26d9f2e373
 
+student:~$ md5sum  ~/.ssh/authorized_keys 
+3d819f9c7b3538fe62c8ca26d9f2e373  /home/student/.ssh/authorized_keys
 
-
+amitg@MacBook-Pro postgrespro-UTM % ssh -p 1234 student@127.0.0.1
+Last login: Fri May  3 15:21:07 2024 from 10.0.2.2
+student:~$ 
+amitg@MacBook-Pro postgrespro-UTM % ssh -p 1234 root@127.0.0.1
 
 
