@@ -22,6 +22,10 @@ sudo chown -R postgres:postgres /var/lib/postgresql/15/replica
 --- [13179] DETAIL:  Permissions should be u=rwx (0700) or u=rwx,g=rx (0750).
 sudo chmod 700 -R  /var/lib/postgresql/15/replica   >>> this additional step also needed otherwise permission error  while starting replica.
 
+cat .pgpass
+0.0.0.0:5432:*:replica:replica
+tail -f /var/lib/postgresql/15/replica/postgresql.conf 
+primary_conninfo = 'user=replica passfile=''/var/lib/postgresql/15/replica/pgpass''  host=''/var/run/postgresql'' port=5432'
 
 -- this will connect to primary host and port
 ls /var/lib/postgresql/15/replica/postgresql.auto.conf 
